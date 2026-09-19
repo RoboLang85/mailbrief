@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.10 is the floor: the code uses PEP 604 unions (`dict | None`)
+        # in annotations that are evaluated at runtime.
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Syntax check
+        run: python -m py_compile mailbrief.py
+
+      - name: Lint
+        run: ruff check --select E9,F63,F7,F82,F401 mailbrief.py
+
+      - name: Import and unit-check pure helpers
+        run: |
+          python - <<'PY'
+          import os, tempfile, importlib.util
+
+          os.environ["MAILBRIEF_HOME"] = tempfile.mkdtemp()
+          spec = importlib.util.spec_from_file_location("mailbrief", "mailbrief.py")
+          m = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(m)
+
+          # slugify: filesystem-safe, collapsed, bounded
+          assert m.slugify("Senior Platform Engineer (Remote, US)") == \
+              "senior-platform-engineer-remote-us"
+          assert m.slugify("A///B") == "a-b"
+          assert len(m.slugify("x" * 200)) <= 60
+
+          # strip_html: Greenhouse double-encodes, so unescape must run twice
+          assert m.strip_html("&lt;p&gt;Build &amp;amp; ship&lt;/p&gt;") == "Build & ship"
+          assert m.strip_html("<script>bad()</script>ok").strip() == "ok"
+          assert m.strip_html(None) == ""
+
+          # schemas are well-formed and constrain what we depend on
+          assert m.TRIAGE_SCHEMA["required"] == [
+              "category", "urgency", "needs_reply", "summary", "action"]
+          assert m.SCORE_SCHEMA["properties"]["score"]["maximum"] == 100
+
+          # db(): creates schema and is idempotent across calls
+          c = m.db()
+          tables = {r[0] for r in c.execute(
+              "SELECT name FROM sqlite_master WHERE type='table'")}
+          assert {"seen", "jobs", "drafts"} <= tables, tables
+          cols = {r["name"] for r in c.execute("PRAGMA table_info(jobs)")}
+          assert "description" in cols
+          m.db()  # second call must not raise
+
+          print("all checks passed")
+          PY
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax check
+        run: bash -n install.sh
+
+      - name: ShellCheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck --severity=warning install.sh

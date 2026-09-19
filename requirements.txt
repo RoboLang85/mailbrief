@@ -1,0 +1,4 @@
+# Pinned rather than floating: an email-reading tool is a poor place to
+# accept silent transitive updates. Review before bumping.
+httpx==0.28.1
+imap-tools==1.10.0
