@@ -15,7 +15,12 @@ venv/
 state.db
 state.db-journal
 state.db-wal
-resume.txt
+# Any extension and any case: resume.txt, resume.JSON, resume.pdf.
+# git matches case-sensitively even on a case-insensitive filesystem, so
+# a narrow `resume.txt` rule silently fails to cover `resume.JSON`.
+resume*
+Resume*
+RESUME*
 boards.json
 briefs/
 drafts/
