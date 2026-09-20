@@ -2,6 +2,38 @@
 
 Failure modes in rough order of how often you will hit them.
 
+## Python
+
+### `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'`
+
+The venv is on Python 3.9 and you are running a build that predates the
+`from __future__ import annotations` line. PEP 604 unions (`dict | None`) in a
+function signature are evaluated when the function is defined, and 3.9 cannot
+evaluate them.
+
+Current versions support 3.9. If you hit this, you are on an old `mailbrief.py`:
+
+```bash
+git -C /path/to/mailbrief pull
+cp /path/to/mailbrief/mailbrief.py ~/.mailbrief/mailbrief.py
+```
+
+To rebuild the venv on a newer interpreter instead:
+
+```bash
+rm -rf ~/.mailbrief/venv
+bash install.sh      # picks the newest python3.x on PATH
+```
+
+Check what the venv is actually running:
+
+```bash
+~/.mailbrief/venv/bin/python --version
+```
+
+Note that `/usr/bin/python3` on macOS is 3.9 and is what a bare `python3 -m venv`
+will use unless a newer interpreter comes first on `PATH`.
+
 ## Ollama
 
 ### `Cannot reach Ollama at http://127.0.0.1:11434`

@@ -21,6 +21,11 @@ Credentials come from macOS Keychain, never from a dotfile:
     security add-generic-password -s mailbrief -a you@example.com -w
 """
 
+# Annotations become strings rather than being evaluated at def time, so
+# PEP 604 unions (dict | None) work on Python 3.9 -- which is what macOS
+# ships as /usr/bin/python3. Without this the module fails to import there.
+from __future__ import annotations
+
 import argparse
 import datetime as dt
 import html

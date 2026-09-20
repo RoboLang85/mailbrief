@@ -88,9 +88,28 @@ mkdir -p "$MAILBRIEF_HOME"/{briefs,drafts}
 cp "$SRC_DIR/mailbrief.py" "$MAILBRIEF_HOME/mailbrief.py"
 chmod +x "$MAILBRIEF_HOME/mailbrief.py"
 
+# macOS ships Python 3.9 as /usr/bin/python3. The code supports it, but prefer
+# a newer interpreter when one is present rather than silently pinning a venv
+# to the oldest thing on PATH.
+PYTHON=""
+for cand in python3.13 python3.12 python3.11 python3.10 python3; do
+    command -v "$cand" >/dev/null 2>&1 || continue
+    PYTHON="$(command -v "$cand")"
+    break
+done
+[[ -n "$PYTHON" ]] || die "No python3 on PATH."
+PYV="$("$PYTHON" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+say "Using Python $PYV ($PYTHON)"
+"$PYTHON" -c 'import sys; sys.exit(0 if sys.version_info >= (3,9) else 1)' \
+    || die "Python 3.9+ required; found $PYV."
+
 if [[ ! -d "$MAILBRIEF_HOME/venv" ]]; then
     say "Creating virtualenv..."
-    python3 -m venv "$MAILBRIEF_HOME/venv"
+    "$PYTHON" -m venv "$MAILBRIEF_HOME/venv"
+else
+    EXISTING="$("$MAILBRIEF_HOME/venv/bin/python" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo "?")"
+    say "Reusing existing virtualenv (Python $EXISTING)"
+    [[ "$EXISTING" == "$PYV" ]] || warn "venv is on $EXISTING while $PYV is available; 'rm -rf $MAILBRIEF_HOME/venv' and re-run to rebuild."
 fi
 say "Installing Python dependencies..."
 "$MAILBRIEF_HOME/venv/bin/pip" install --quiet --upgrade pip

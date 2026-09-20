@@ -15,9 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.10 is the floor: the code uses PEP 604 unions (`dict | None`)
-        # in annotations that are evaluated at runtime.
-        python-version: ["3.10", "3.12", "3.13"]
+        # 3.9 is the floor because macOS ships it as /usr/bin/python3.
+        # `from __future__ import annotations` keeps PEP 604 unions lazy so
+        # they parse there. Keeping 3.9 in this matrix is what stops that
+        # regressing -- it shipped broken once already.
+        python-version: ["3.9", "3.10", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 

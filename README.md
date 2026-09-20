@@ -49,7 +49,7 @@ multi-step tool use. The architecture only ever asks it to do the former.
 ## Requirements
 
 - macOS on Apple Silicon (the installer is macOS-specific; the Python runs anywhere)
-- Python 3.10+
+- Python 3.9+ (macOS ships 3.9; the installer prefers newer when present)
 - [Ollama](https://ollama.com)
 - An IMAP mailbox and an app password
 
